@@ -23,7 +23,7 @@ English spoken response (transcriptions and i-vectors are provided for the spoke
 responses, but not the audio file)
 
 3) Fusion Task: classification of an individual's native language based on a written
-essay and a spoken response 
+essay and a spoken response
 
 The object of the tasks are to predict the native language of a non-native
 speaker of English given an essay and/or speech transcription written/spoken by
@@ -48,11 +48,11 @@ partition (train) and 1,100 (100 per L1) in the development partition (dev).
 
 For the Speech Task (2), there are 11,000 orthographic transcriptions of 45-second
 English spoken responses, (1,000 per L1) in the training partition (train) and 1,100
-(100 per L1) in the development partition (dev).  In addition, i-vectors computed 
-from the 45-second audio file corresponding to each orthographic transcription are 
-provided. i-vectors are compact representations of a speech utterance in a low-dimensional 
-subspace based upon factor analysis. The dimensions of the i-vectors (800) and number of 
-Gaussian components (1024) are tuned on the development set by using the Kaldi toolkit 
+(100 per L1) in the development partition (dev).  In addition, i-vectors computed
+from the 45-second audio file corresponding to each orthographic transcription are
+provided. i-vectors are compact representations of a speech utterance in a low-dimensional
+subspace based upon factor analysis. The dimensions of the i-vectors (800) and number of
+Gaussian components (1024) are tuned on the development set by using the Kaldi toolkit
 (http://kaldi-asr.org).
 
 Since the audio files are not provided for this task, the i-vectors
@@ -70,7 +70,7 @@ The following five baselines are provided for the NLI Shared Task 2017:
 
 essay_baseline                              baseline system for the Essay Task
 
-speech_transcriptions_baseline              baseline system for the Speech Task using only 
+speech_transcriptions_baseline              baseline system for the Speech Task using only
 
 speech_transcriptions+ivectors_baseline	    baseline system for the Speech Task using both
                                             the transcriptions and i-vectors
@@ -106,50 +106,50 @@ svm_light format under 'data/features/<baseline_name>/train' and
 
 script arguments for 'essays_baseline.py' and 'speech_transcriptions_baseline.py':
 
-  --train                      The name of the training partition directories used for 
-                               reading training data and labels and writing training 
-                               feature files. By default, the baseline script uses 
+  --train                      The name of the training partition directories used for
+                               reading training data and labels and writing training
+                               feature files. By default, the baseline script uses
                                'train'.
 
-  --test                       The name of the test partition directories used for 
-                               reading test data and labels and writing dev feature 
+  --test                       The name of the test partition directories used for
+                               reading test data and labels and writing dev feature
                                files. By default, the baseline script uses 'dev'.
 
-  --preprocessor               Name of the directory containing the processed essay 
-                               data. This package comes with two options: 'original' 
-                               is the unprocessed raw essay text. 'tokenized' is the 
-                               sentence-and-word-segmented text. The baseline uses 
-                               'tokenized' by default. To add custom preprocessing of 
-                               the data, output the processed data to a new directory 
+  --preprocessor               Name of the directory containing the processed essay
+                               data. This package comes with two options: 'original'
+                               is the unprocessed raw essay text. 'tokenized' is the
+                               sentence-and-word-segmented text. The baseline uses
+                               'tokenized' by default. To add custom preprocessing of
+                               the data, output the processed data to a new directory
                                under '/data/{essays|speech_transcriptions}/{train|dev}/',
                                and pass the name of that directory to this parameter.
 
-  --training_features          Path to a precomputed feature file for the train 
-                               partition, in svm_light format. It must have the 
-                               same number of rows, in the same order, as the 
-                               corresponding labels files. To avoid dimensionality 
-                               mismatch, training_features and test_features files 
-                               must be provided together. If only one is provided, 
-                               the script will ignore it and re-compute features from 
+  --training_features          Path to a precomputed feature file for the train
+                               partition, in svm_light format. It must have the
+                               same number of rows, in the same order, as the
+                               corresponding labels files. To avoid dimensionality
+                               mismatch, training_features and test_features files
+                               must be provided together. If only one is provided,
+                               the script will ignore it and re-compute features from
                                the data.
 
-  --test_features:             Path to a precomputed feature file for the test 
-                               partition, in svm_light format. It must have the 
-                               same number of rows, in the same order, as the 
-                               corresponding labels files. To avoid dimensionality 
-                               mismatch, training_features and test_features files 
-                               must be provided together. If only one is provided, 
-                               the script will ignore it and re-compute features from 
+  --test_features:             Path to a precomputed feature file for the test
+                               partition, in svm_light format. It must have the
+                               same number of rows, in the same order, as the
+                               corresponding labels files. To avoid dimensionality
+                               mismatch, training_features and test_features files
+                               must be provided together. If only one is provided,
+                               the script will ignore it and re-compute features from
                                the data.
 
-  --feature_outfile_name:      Custom name for feature files generated by script. 
-                               The script will prepend the appropriate partition name to 
+  --feature_outfile_name:      Custom name for feature files generated by script.
+                               The script will prepend the appropriate partition name to
                                each of the feature files. If no feature_outfile_name is given,
                                the feature files will be named using the date and time.
 
  --predictions_outfile_name:   Custom name for predictions file (will be saved in
                                ../predictions/essays/). If not provided, the predictions
-                               file will be named using the date and time. 
+                               file will be named using the date and time.
 
 Arguments specific to fusion baselines:
 
@@ -200,7 +200,7 @@ III. Directory structure
                 original/  # essays in their original format
                 tokenized/  # essays segmented by sentence and token
             dev/
-                original/ 
+                original/
                 tokenized/
         speech_transcriptions/
             train/
