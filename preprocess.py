@@ -17,13 +17,13 @@ def preprocess(args):
 
     if args.ngram:
         ngram_dir = join("data/features/speech_transcriptions/ngrams",
-                                 str(args.ngram), args.data)
+                         str(args.ngram), args.data)
         ngram_list = product(ascii_lowercase + punctuation + digits,
                              repeat=args.ngram)
         ngram_dict = {i: ng for (i, ng) in enumerate(ngram_list)}
         ngram_rev_dict = {ng: i for (i, ng) in ngram_dict.items()}
         pickle_path = join("data/features/speech_transcriptions/ngrams",
-                                   str(args.ngram), 'ngram_dict.pkl')
+                            str(args.ngram), "dict.pkl")
         with open(pickle_path, 'wb') as fpkl:
             pickle.dump((ngram_dict, ngram_rev_dict), fpkl)
 
@@ -37,8 +37,7 @@ def preprocess(args):
                         'S', 'SH', 'T', 'TH', 'UH', 'UW', 'V', 'W', 'Y', 'Z', 'ZH']
         arpabet_dict = {i: a for (i, a) in enumerate(arpabet_list)}
         arpabet_rev_dict = {a: i for (i, a) in arpabet_dict.items()}
-        pickle_path = join("data/features/speech_transcriptions/arpabets/",
-                                   'arpabet_dict.pkl')
+        pickle_path = "data/features/speech_transcriptions/arpabets/dict.pkl"
         with open(pickle_path, 'wb') as fpkl:
             pickle.dump((arpabet_dict, arpabet_rev_dict), fpkl)
 
