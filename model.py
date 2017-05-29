@@ -14,7 +14,6 @@ import numpy as np
 #         elif classname.find('Linear') != -1:
 
 
-
 class NativeLanguageCNN(nn.Module):
     def __init__(self, vocab_size, embed_dim, dropout, out_channel, n_language):
         super(NativeLanguageCNN, self).__init__()
