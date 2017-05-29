@@ -3,36 +3,40 @@ import os
 
 import nltk
 from nltk.util import ngrams
-from string import ascii_lowercase
+from string import ascii_lowercase, punctuation, digits
 from itertools import product
+from tqdm import tqdm
 
 
-def preprocess():
+def preprocess(args):
     transcript_dir = os.path.join("data/speech_transcriptions", args.data,
                                   "tokenized")
     file_list = os.listdir(transcript_dir)
 
     if args.ngram:
         ngram_dir = os.path.join("data/features/speech_transcriptions/ngrams",
-                                 args.ngram, args.data)
-
-        ngrams = product(ascii_lowercase + '.,', repeat=args.ngram)
-        ngram_dict = {i: ng for (i, ng) in enumerate(ngrams)}
-        ngram_rev_dict = {ng: i for (i, ng) in ngram_dict.items()}
+                                 str(args.ngram), args.data)
+        ngram_list = product(ascii_lowercase + punctuation + digits,
+                             repeat=args.ngram)
+        ngram_dict = {ng: i for (i, ng) in enumerate(ngram_list)}
 
     if args.arpabet:
         arpabet_dir = os.path.join("data/features/speech_transcriptions/arpabets/",
                                    args.data)
-        arpabets = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B', 'CH', 'D', 'DH', \
-                    'EH', 'ER', 'EY', 'F', 'G', 'HH', 'IH', 'IY', 'JH', 'K', \
-                    'L', 'M', 'N', 'NG', 'OW', 'OY', 'P', 'R', 'S', 'SH', 'T', \
-                    'TH', 'UH', 'UW', 'V', 'W', 'Y', 'Z', 'ZH']
+        arpabet_list = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B', 'CH', 'D',
+                        'DH', 'EH', 'ER', 'EY', 'F', 'G', 'HH', 'IH', 'IY',
+                        'JH', 'K', 'L', 'M', 'N', 'NG', 'OW', 'OY', 'P', 'R',
+                        'S', 'SH', 'T', 'TH', 'UH', 'UW', 'V', 'W', 'Y', 'Z', 'ZH']
 
-        arpabet_dict = {i: a for (i, a) in enumerate(arpabets)}
-        arpabet_rev_dict = {a: i for (i, a) in arpabet_dict.items()}
+        arpabet_dict = {a: i for (i, a) in enumerate(arpabet_list)}
         cmu_dict = nltk.corpus.cmudict.dict()
 
-    for fn in file_list:
+        def get_arpabet_idx(arpabet):
+            if arpabet[-1].isdigit():
+                arpabet = arpabet[:-1]
+            return arpabet_dict[arpabet]
+
+    for fn in tqdm(file_list):
         fullpath = os.path.join(transcript_dir, fn)
         with open(fullpath, 'r') as fp:
             if args.ngram:
@@ -42,14 +46,19 @@ def preprocess():
 
             for line in fp:
                 if args.ngram:
-                    ngram = ngrams(''.join(line.split()).lowercase(), n=args.ngram)
-                    seq = [ngram_rev_dict[ng] for ng in ngram]
+                    ngram = ngrams(''.join(line.lower().split()), n=args.ngram)
+                    # for ng in ngram:
+                    #     if ng not in ngram_dict:
+                    #         print(line)
+                    #         continue
+                    seq = [ngram_dict[ng] for ng in ngram if ng in ngram_dict]
                     f_ngram.writelines(' '.join(str(i) for i in seq))
 
                 if args.arpabet:
-                    arpabets = [cmu_dict(word) for word in line.split()
+                    arpabets = [cmu_dict[word][0] for word in line.split()
                                 if word in cmu_dict]
-                    seq = [arpabet_rev_dict(a) for w in arpabets for a in w]
+
+                    seq = [get_arpabet_idx(ab) for wd in arpabets for ab in wd]
                     f_arpabet.writelines(' '.join(str(i) for i in seq))
 
             if args.ngram:
