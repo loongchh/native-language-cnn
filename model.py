@@ -17,13 +17,13 @@ def _init_weights(self, m):
 
 
 class CNN(nn.Module):
-    def __init__(self, ngram_size, embed_size, out_channel, n_language):
+    def __init__(self, vocab_size, embed_size, out_channel, n_language):
         super(CNN, self).__init__()
-        self.embed = nn.Embedding(ngram_size, embed_size)
+        self.embed = nn.Embedding(vocab_size, embed_size)
 
         self.cnn3 = nn.Conv1d(1, out_channel, 3)
-        self.cnn4 = nn.Conv1d(1, out_channel, 3)
-        self.cnn5 = nn.Conv1d(1, out_channel, 3)
+        self.cnn4 = nn.Conv1d(1, out_channel, 4)
+        self.cnn5 = nn.Conv1d(1, out_channel, 5)
 
         self.linear = nn.Linear(out_channel * 3, n_language)
 
