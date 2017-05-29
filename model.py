@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -16,10 +15,10 @@ def _init_weights(self, m):
             m.bias.data.fill_(0)
 
 
-class CNN(nn.Module):
-    def __init__(self, vocab_size, embed_size, out_channel, n_language):
+class NativeLanguageCNN(nn.Module):
+    def __init__(self, vocab_size, embed_dim, out_channel, n_language):
         super(CNN, self).__init__()
-        self.embed = nn.Embedding(vocab_size, embed_size)
+        self.embed = nn.Embedding(vocab_size, embed_dim)
 
         self.cnn3 = nn.Conv1d(1, out_channel, 3)
         self.cnn4 = nn.Conv1d(1, out_channel, 4)

@@ -1,5 +1,6 @@
 import argparse
-import os
+from os import listdir
+from os.path import join
 
 import nltk
 from nltk.util import ngrams
@@ -10,25 +11,25 @@ import pickle
 
 
 def preprocess(args):
-    transcript_dir = os.path.join("data/speech_transcriptions", args.data,
+    transcript_dir = join("data/speech_transcriptions", args.data,
                                   "tokenized")
-    file_list = os.listdir(transcript_dir)
+    file_list = listdir(transcript_dir)
 
     if args.ngram:
-        ngram_dir = os.path.join("data/features/speech_transcriptions/ngrams",
+        ngram_dir = join("data/features/speech_transcriptions/ngrams",
                                  str(args.ngram), args.data)
         ngram_list = product(ascii_lowercase + punctuation + digits,
                              repeat=args.ngram)
         ngram_dict = {i: ng for (i, ng) in enumerate(ngram_list)}
         ngram_rev_dict = {ng: i for (i, ng) in ngram_dict.items()}
-        pickle_path = os.path.join("data/features/speech_transcriptions/ngrams",
+        pickle_path = join("data/features/speech_transcriptions/ngrams",
                                    str(args.ngram), 'ngram_dict.pkl')
         with open(pickle_path, 'wb') as fpkl:
             pickle.dump((ngram_dict, ngram_rev_dict), fpkl)
 
     if args.arpabet:
         cmu_rev_dict = nltk.corpus.cmudict.dict()
-        arpabet_dir = os.path.join("data/features/speech_transcriptions/arpabets/",
+        arpabet_dir = join("data/features/speech_transcriptions/arpabets/",
                                    args.data)
         arpabet_list = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B', 'CH', 'D',
                         'DH', 'EH', 'ER', 'EY', 'F', 'G', 'HH', 'IH', 'IY',
@@ -36,7 +37,7 @@ def preprocess(args):
                         'S', 'SH', 'T', 'TH', 'UH', 'UW', 'V', 'W', 'Y', 'Z', 'ZH']
         arpabet_dict = {i: a for (i, a) in enumerate(arpabet_list)}
         arpabet_rev_dict = {a: i for (i, a) in arpabet_dict.items()}
-        pickle_path = os.path.join("data/features/speech_transcriptions/arpabets/",
+        pickle_path = join("data/features/speech_transcriptions/arpabets/",
                                    'arpabet_dict.pkl')
         with open(pickle_path, 'wb') as fpkl:
             pickle.dump((arpabet_dict, arpabet_rev_dict), fpkl)
@@ -47,12 +48,12 @@ def preprocess(args):
             return arpabet_rev_dict[arpabet]
 
     for fn in tqdm(file_list):
-        fullpath = os.path.join(transcript_dir, fn)
+        fullpath = join(transcript_dir, fn)
         with open(fullpath, 'r') as fp:
             if args.ngram:
-                f_ngram = open(os.path.join(ngram_dir, fn), 'w')
+                f_ngram = open(join(ngram_dir, fn), 'w')
             if args.arpabet:
-                f_arpabet = open(os.path.join(arpabet_dir, fn), 'w')
+                f_arpabet = open(join(arpabet_dir, fn), 'w')
 
             for line in fp:
                 if args.ngram:
@@ -75,6 +76,7 @@ def preprocess(args):
                 f_ngram.close()
             if args.arpabet:
                 f_arpabet.close()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='CNN')
