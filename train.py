@@ -127,12 +127,12 @@ def train(args, logger, log_dir):
             ep + 1, train_loss[-1], train_acc[-1], val_acc[-1]))
 
         # Save model state
-        if (ep + 1) % args.save_every == 0:
+        if (ep + 1) % args.save_every == 0 or ep == args.num_epochs - 1:
             save_path = join(log_dir, "model-state-{:04d}.pkl".format(ep + 1))
             torch.save(nl_cnn.state_dict(), save_path)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='CNN')
+    parser = argparse.ArgumentParser(description='NLCNN')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='learning rate')
     parser.add_argument('--seed', type=int, default=224,
@@ -176,14 +176,14 @@ if __name__ == '__main__':
 
     # Setup logger
     logging.basicConfig(filename=join(log_dir, timestamp + ".log"),
-                        format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)6s - %(message)s',
+                        format='[%(asctime)s] {%(pathname)s:%(lineno)3d} %(levelname)6s - %(message)s',
                         level=logging.DEBUG, datefmt='%H:%M:%S')
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     formatter = logging.Formatter('%(name)-s: %(levelname)-8s %(message)s')
     console.setFormatter(formatter)
     logging.getLogger('').addHandler(console)
-    logger = logging.getLogger("train")
+    logger = logging.getLogger("TRAIN")
 
     # Set random seed
     np.random.seed(args.seed)
