@@ -6,6 +6,7 @@ from nltk.util import ngrams
 from string import ascii_lowercase, punctuation, digits
 from itertools import product
 from tqdm import tqdm
+import pickle
 
 
 def preprocess(args):
@@ -19,8 +20,13 @@ def preprocess(args):
         ngram_list = product(ascii_lowercase + punctuation + digits,
                              repeat=args.ngram)
         ngram_dict = {ng: i for (i, ng) in enumerate(ngram_list)}
+        pickle_path = os.path.join("data/features/speech_transcriptions/ngrams",
+                                   str(args.ngram), 'ngram_dict.pkl')
+        with open(pickle_path, 'wb') as fpkl:
+            pickle.dump(ngram_dict, fpkl)
 
     if args.arpabet:
+        cmu_dict = nltk.corpus.cmudict.dict()
         arpabet_dir = os.path.join("data/features/speech_transcriptions/arpabets/",
                                    args.data)
         arpabet_list = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B', 'CH', 'D',
@@ -29,7 +35,10 @@ def preprocess(args):
                         'S', 'SH', 'T', 'TH', 'UH', 'UW', 'V', 'W', 'Y', 'Z', 'ZH']
 
         arpabet_dict = {a: i for (i, a) in enumerate(arpabet_list)}
-        cmu_dict = nltk.corpus.cmudict.dict()
+        pickle_path = os.path.join("data/features/speech_transcriptions/arpabets/",
+                                   'arpabet_dict.pkl')
+        with open(pickle_path, 'wb') as fpkl:
+            pickle.dump(arpabet_dict, fpkl)
 
         def get_arpabet_idx(arpabet):
             if arpabet[-1].isdigit():
