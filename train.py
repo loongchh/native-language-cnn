@@ -57,29 +57,31 @@ def train(args, logger, log_dir):
         train_mat.shape[0], val_mat.shape[0]))
 
     logger.info("Construct CNN model")
-    nl_cnn = NativeLanguageCNN(n_features, args.embed_dim, args.dropout,
+    nlcnn_model = NativeLanguageCNN(n_features, args.embed_dim, args.dropout,
                                args.channel, len(lang_list))
     logger.debug("embed dim={:d}, dropout={:.2f}, channels={:d}".format(
         args.embed_dim, args.dropout, args.channel))
     if args.gpu:
         logger.info("Enable GPU computation")
-        nl_cnn.cuda()
+        nlcnn_model.cuda()
 
     logger.info("Create optimizer")
-    optimizer = optim.Adam(nl_cnn.parameters(), lr=args.lr,
+    optimizer = optim.Adam(nlcnn_model.parameters(), lr=args.lr,
                            weight_decay=args.regularization)
-    logger.debug("list of parameters: {}".format(list(zip(*nl_cnn.named_parameters()))[0]))
+    logger.debug("list of parameters: {}".format(list(zip(*nlcnn_model.named_parameters()))[0]))
     logger.debug("lr={:.2e}, regularization={:.2e}".format(args.lr, args.regularization))
     criterion = nn.CrossEntropyLoss()
 
-    train_dataset = TensorDataset(torch.from_numpy(train_mat), torch.LongTensor(train_label))
-    train_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    train_mat_tensor = torch.from_numpy(train_mat)
+    train_label_tensor = torch.LongTensor(train_label)
     if args.gpu:
-        train_mat_var = Variable(torch.from_numpy(train_mat).cuda())
-        val_mat_var = Variable(torch.from_numpy(val_mat).cuda())
-    else:
-        train_mat_var = Variable(torch.from_numpy(train_mat))
-        val_mat_var = Variable(torch.from_numpy(val_mat))
+        train_mat_tensor = train_mat_tensor.cuda()
+        train_label_tensor = train_label_tensor.cuda()
+
+    train_dataset = TensorDataset(train_mat_tensor, train_label_tensor)
+    train_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    val_mat_var = Variable(torch.from_numpy(val_mat).cuda() if args.gpu \
+                           else torch.from_numpy(val_mat))
 
     train_loss = []
     train_acc = []
@@ -91,16 +93,12 @@ def train(args, logger, log_dir):
         batch_acc = []
 
         with trange(steps_per_epoch) as progbar:
-            for (t, (x, y)) in enumerate(train_data_loader):
-                if args.gpu:
-                    x = x.cuda()
-                    y = y.cuda()
-
+            for (x, y) in train_data_loader:
                 x_var = Variable(x)
                 y_var = Variable(y)
 
-                nl_cnn.train()
-                score = nl_cnn(x_var)
+                nlcnn_model.train()
+                score = nlcnn_model(x_var)
                 pred = np.argmax(score.data.cpu().numpy(), axis=1)
                 batch_acc.append(np.mean(pred == y.cpu().numpy()))
                 loss = criterion(score, y_var)
@@ -108,7 +106,7 @@ def train(args, logger, log_dir):
                 optimizer.zero_grad()
                 loss.backward()
                 if args.clip_norm:  # clip by gradient norm
-                    norm = nn.utils.clip_grad_norm(nl_cnn.parameters, args.clip_norm)
+                    norm = nn.utils.clip_grad_norm(nlcnn_model.parameters, args.clip_norm)
                     progbar.set_postfix(loss=loss.data.cpu().numpy()[0], norm=norm)
                 else:
                     progbar.set_postfix(loss=loss.data.cpu().numpy()[0])
@@ -116,11 +114,12 @@ def train(args, logger, log_dir):
                 progbar.update(1)
                 optimizer.step()
 
-        logger.info("Evaluating...")
         train_loss.append(loss.data.cpu().numpy()[0])
         train_acc.append(np.mean(batch_acc))
-        nl_cnn.eval()  # eval mode: no dropout
-        val_score = nl_cnn(val_mat_var)
+
+        logger.info("Evaluating...")
+        nlcnn_model.eval()  # eval mode: no dropout
+        val_score = nlcnn_model(val_mat_var)
         val_pred = np.argmax(val_score.data.cpu().numpy(), axis=1)
         val_acc.append(np.mean(val_pred == val_label))
         logger.info("Epoch #{:d}: loss = {:.4f}, train acc = {:.4f}, val acc = {:.4f}".format(
@@ -129,7 +128,8 @@ def train(args, logger, log_dir):
         # Save model state
         if (ep + 1) % args.save_every == 0 or ep == args.num_epochs - 1:
             save_path = join(log_dir, "model-state-{:04d}.pkl".format(ep + 1))
-            torch.save(nl_cnn.state_dict(), save_path)
+            torch.save(nlcnn_model.state_dict(), save_path)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='NLCNN')
@@ -166,7 +166,6 @@ if __name__ == '__main__':
                         help='CSV of the train set labels')
     parser.add_argument('--gpu', action='store_true',
                         help='using GPU-enabled CUDA Variables')
-
     args = parser.parse_args()
 
     # Create log directory + file
