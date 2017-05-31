@@ -18,37 +18,50 @@ from sklearn.model_selection import train_test_split
 from model import NativeLanguageCNN
 
 
-def read_mat(file_dir, max_length, vocab_size):
-    file_list = listdir(file_dir)
+def read_data(file_dir, label_file, max_length, vocab_size, logger=None, line=True):
+    lang = pd.read_csv(label_file)['L1'].values.tolist()
+    lang_list = sorted(list(set(lang)))
+    if logger:
+        logger.debug("list of L1: {}".format(lang_list))
+    lang_dict = {i: l for (i, l) in enumerate(lang_list)}
+    lang_rev_dict = {l: i for (i, l) in lang_dict.items()}
+    label = [lang_rev_dict[la] for la in lang]
 
-    # vocab_size indices stands for padding
-    mat = np.ones((len(file_list), max_length), dtype=np.int64) * vocab_size
+    samples = []
+    label_line = []
+    pad = [vocab_size]  # vocab_size indices stands for padding
 
-    for (i, fl) in enumerate(file_list):
-        tokens = open(join(file_dir, fl)).read().split()
-        length = min(len(tokens), max_length)
-        mat[i, :length] = tokens[:length]
+    for (i, fl) in enumerate(listdir(file_dir)):
+        if line:
+            lines = open(join(file_dir, fl)).readlines()
+            for ln in lines:
+                tokens = ln.split()
+                samples.append(tokens[:max_length] + pad * (max_length - len(tokens)))
+            label_line += [label[i]] * len(lines)
+        else:
+            tokens = open(join(file_dir, fl)).read().split()
+            samples += tokens[:max_length] + pad * (max_length - len(tokens))
 
-    return mat
+    if line:
+        label = label_line
+    mat = np.array(samples, dtype=np.int64)
+
+    return (mat, label, lang_dict)
 
 
 def train(args, logger, log_dir):
     with open(join(args.feature_dir, 'dict.pkl'), 'rb') as fpkl:
         (feature_dict, feature_rev_dict) = pickle.load(fpkl)
     n_features = len(feature_dict)
-    logger.debug("number of features = {}".format(n_features))
 
     logger.info("Read train dataset")
-    train_mat = read_mat(join(args.feature_dir, 'train'),
-                         args.max_length, n_features)
-
-    logger.info("Read train labels")
-    train_lang = pd.read_csv(args.label)['L1'].values.tolist()
-    lang_list = sorted(list(set(train_lang)))
-    logger.debug("list of L1: {}".format(lang_list))
-    lang_dict = {i: l for (i, l) in enumerate(lang_list)}
-    lang_rev_dict = {l: i for (i, l) in lang_dict.items()}
-    train_label = [lang_rev_dict[la] for la in train_lang]
+    logger.debug("feature dir = {:s}, label file = {:s}".format(
+        args.feature_dir, args.label))
+    logger.debug("max len = {:d}, num of features = {:d}".format(
+        args.max_length, n_features))
+    (train_mat, train_label, lang_dict) = read_data(join(args.feature_dir, 'train'),
+                                                    args.label, args.max_length,
+                                                    n_features, logger)
 
     # Split into train/val set
     (train_mat, val_mat, train_label, val_label) = \
@@ -58,7 +71,7 @@ def train(args, logger, log_dir):
 
     logger.info("Construct CNN model")
     nlcnn_model = NativeLanguageCNN(n_features, args.embed_dim, args.dropout,
-                               args.channel, len(lang_list))
+                                    args.channel, len(lang_dict))
     logger.debug("embed dim={:d}, dropout={:.2f}, channels={:d}".format(
         args.embed_dim, args.dropout, args.channel))
     if args.gpu:
@@ -74,9 +87,6 @@ def train(args, logger, log_dir):
 
     train_mat_tensor = torch.from_numpy(train_mat)
     train_label_tensor = torch.LongTensor(train_label)
-    if args.gpu:
-        train_mat_tensor = train_mat_tensor.cuda()
-        train_label_tensor = train_label_tensor.cuda()
 
     train_dataset = TensorDataset(train_mat_tensor, train_label_tensor)
     train_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -89,11 +99,15 @@ def train(args, logger, log_dir):
     steps_per_epoch = int(np.ceil(train_mat.shape[0] / args.batch_size))
 
     for ep in range(args.num_epochs):
+        logger.info("========================================")
         logger.info("Epoch #{:d} of {:d}".format(ep + 1, args.num_epochs))
         batch_acc = []
 
         with trange(steps_per_epoch) as progbar:
             for (x, y) in train_data_loader:
+                if args.gpu:
+                    x = x.cuda()
+                    y = y.cuda()
                 x_var = Variable(x)
                 y_var = Variable(y)
 
@@ -127,6 +141,7 @@ def train(args, logger, log_dir):
 
         # Save model state
         if (ep + 1) % args.save_every == 0 or ep == args.num_epochs - 1:
+            logger.info("Saving model-state-{:04d}.pkl...".format(ep + 1))
             save_path = join(log_dir, "model-state-{:04d}.pkl".format(ep + 1))
             torch.save(nlcnn_model.state_dict(), save_path)
 
@@ -145,17 +160,17 @@ if __name__ == '__main__':
                         help='dropout strength')
     parser.add_argument('--num-epochs', type=int, default=100,
                         help='number of training epochs')
-    parser.add_argument('--batch-size', type=int, default=32,
+    parser.add_argument('--batch-size', type=int, default=25,
                         help='size of mini-batch')
     parser.add_argument('--val-split', type=float, default=0.0909,
                         help='fraction of train set to use as val set')
-    parser.add_argument('--max-length', type=int, default=600,
+    parser.add_argument('--max-length', type=int, default=200,
                         help='maximum feature length for each document')
     parser.add_argument('--embed-dim', type=int, default=500,
                         help='dimension of the feature embeddings')
     parser.add_argument('--channel', type=int, default=500,
                         help='number of channel output for each CNN layer')
-    parser.add_argument('--feature-dir', type=str, default='data/features/speech_transcriptions/ngrams/2/',
+    parser.add_argument('--feature-dir', type=str, default='data/features/speech_transcriptions/ngrams/2',
                         help='directory containing features, including train/dev directories and \
                               pickle file of (dict, rev_dict) mapping indices to feature labels')
     parser.add_argument('--log-dir', type=str, default='model',
@@ -166,6 +181,8 @@ if __name__ == '__main__':
                         help='CSV of the train set labels')
     parser.add_argument('--gpu', action='store_true',
                         help='using GPU-enabled CUDA Variables')
+    # parser.add_argument('--line', action='store_true',
+    #                     help='create train set split by lines')
     args = parser.parse_args()
 
     # Create log directory + file
@@ -185,7 +202,8 @@ if __name__ == '__main__':
     logger = logging.getLogger("TRAIN")
 
     # Set random seed
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    if args.seed:
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
 
     train(args, logger, log_dir)

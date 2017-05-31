@@ -18,8 +18,7 @@ def preprocess(args):
     if args.ngram:
         ngram_dir = join("data/features/speech_transcriptions/ngrams",
                          str(args.ngram), args.data)
-        ngram_list = product(ascii_lowercase + punctuation + digits,
-                             repeat=args.ngram)
+        ngram_list = product(ascii_lowercase + digits, repeat=args.ngram)
         ngram_dict = {i: ng for (i, ng) in enumerate(ngram_list)}
         ngram_rev_dict = {ng: i for (i, ng) in ngram_dict.items()}
         pickle_path = join("data/features/speech_transcriptions/ngrams",
