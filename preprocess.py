@@ -28,8 +28,7 @@ def preprocess(args):
 
     if args.arpabet:
         cmu_rev_dict = nltk.corpus.cmudict.dict()
-        arpabet_dir = join("data/features/speech_transcriptions/arpabets/",
-                                   args.data)
+        arpabet_dir = join("data/features/speech_transcriptions/arpabets/", args.data)
         arpabet_list = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B', 'CH', 'D',
                         'DH', 'EH', 'ER', 'EY', 'F', 'G', 'HH', 'IH', 'IY',
                         'JH', 'K', 'L', 'M', 'N', 'NG', 'OW', 'OY', 'P', 'R',
