@@ -14,6 +14,7 @@ from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
 
 from model import NativeLanguageCNN
 
@@ -94,15 +95,16 @@ def train(args, logger, log_dir):
                            else torch.from_numpy(val_mat))
 
     train_loss = []
-    train_acc = []
-    val_acc = []
+    train_f1 = []
+    val_f1 = []
     steps_per_epoch = int(np.ceil(train_mat.shape[0] / args.batch_size))
 
     for ep in range(args.num_epochs):
         logger.info("========================================")
         logger.info("Epoch #{:d} of {:d}".format(ep + 1, args.num_epochs))
-        batch_acc = []
 
+        train_pred = []
+        train_y = []
         with trange(steps_per_epoch) as progbar:
             for (x, y) in train_data_loader:
                 if args.gpu:
@@ -114,9 +116,10 @@ def train(args, logger, log_dir):
                 nlcnn_model.train()
                 score = nlcnn_model(x_var)
                 pred = np.argmax(score.data.cpu().numpy(), axis=1)
-                batch_acc.append(np.mean(pred == y.cpu().numpy()))
-                loss = criterion(score, y_var)
+                train_pred += pred.tolist()
+                train_y += y.cpu().numpy().tolist()
 
+                loss = criterion(score, y_var)
                 optimizer.zero_grad()
                 loss.backward()
                 if args.clip_norm:  # clip by gradient norm
@@ -128,16 +131,16 @@ def train(args, logger, log_dir):
                 progbar.update(1)
                 optimizer.step()
 
-        train_loss.append(loss.data.cpu().numpy()[0])
-        train_acc.append(np.mean(batch_acc))
-
         logger.info("Evaluating...")
+        train_loss.append(loss.data.cpu().numpy()[0])
+        train_f1.append(f1_score(train_y, train_pred, average='weighted'))
+
         nlcnn_model.eval()  # eval mode: no dropout
         val_score = nlcnn_model(val_mat_var)
         val_pred = np.argmax(val_score.data.cpu().numpy(), axis=1)
-        val_acc.append(np.mean(val_pred == val_label))
-        logger.info("Epoch #{:d}: loss = {:.4f}, train acc = {:.4f}, val acc = {:.4f}".format(
-            ep + 1, train_loss[-1], train_acc[-1], val_acc[-1]))
+        val_f1.append(f1_score(val_label, val_pred, average='weighted'))
+        logger.info("Epoch #{:d}: loss = {:.3f}, train F1 = {:.2%}, val F1 = {:.2%}".format(
+            ep + 1, train_loss[-1], train_f1[-1], val_f1[-1]))
 
         # Save model state
         if (ep + 1) % args.save_every == 0 or ep == args.num_epochs - 1:
@@ -181,8 +184,6 @@ if __name__ == '__main__':
                         help='CSV of the train set labels')
     parser.add_argument('--gpu', action='store_true',
                         help='using GPU-enabled CUDA Variables')
-    # parser.add_argument('--line', action='store_true',
-    #                     help='create train set split by lines')
     args = parser.parse_args()
 
     # Create log directory + file
