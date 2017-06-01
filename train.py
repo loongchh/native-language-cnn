@@ -50,7 +50,7 @@ def read_data(file_dir, label_file, max_length, vocab_size, logger=None, line=Tr
     return (mat, label, lang_dict)
 
 
-def train(args, logger=None, save_dir=None):
+def train(args, save_dir=None, logger=None):
     with open(join(args.feature_dir, 'dict.pkl'), 'rb') as fpkl:
         (feature_dict, feature_rev_dict) = pickle.load(fpkl)
     n_features = len(feature_dict)
@@ -80,7 +80,7 @@ def train(args, logger=None, save_dir=None):
             args.embed_dim, args.dropout, args.channel))
     if args.cuda:
         if logger:
-            logger.info("Enable GPU computation")
+            logger.info("Enable CUDA Device (Id: {:d}".format(args.cuda))
         nlcnn_model.cuda(args.cuda)
 
     if logger:
@@ -157,7 +157,7 @@ def train(args, logger=None, save_dir=None):
                 save_path = join(save_dir, "model-state-{:04d}.pkl".format(ep + 1))
                 torch.save(nlcnn_model.state_dict(), save_path)
 
-    return (train_loss, train_f1, val_f1)
+    return (nlcnn_model, train_loss, train_f1, val_f1)
 
 
 if __name__ == '__main__':
@@ -218,4 +218,4 @@ if __name__ == '__main__':
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
 
-    train(args, logger, log_dir)
+    train(args, log_dir, logger)
