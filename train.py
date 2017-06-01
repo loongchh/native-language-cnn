@@ -78,9 +78,9 @@ def train(args, save_dir=None, logger=None):
     if logger:
         logger.debug("embed dim={:d}, dropout={:.2f}, channels={:d}".format(
             args.embed_dim, args.dropout, args.channel))
-    if args.cuda:
+    if args.cuda is not None:
         if logger:
-            logger.info("Enable CUDA Device (Id: {:d}".format(args.cuda))
+            logger.info("Enable CUDA Device ID {:d}".format(args.cuda))
         nlcnn_model.cuda(args.cuda)
 
     if logger:
@@ -96,7 +96,7 @@ def train(args, save_dir=None, logger=None):
 
     train_dataset = TensorDataset(train_mat_tensor, train_label_tensor)
     train_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_mat_var = Variable(torch.from_numpy(val_mat).cuda(args.cuda) if args.cuda
+    val_mat_var = Variable(torch.from_numpy(val_mat).cuda(args.cuda) if args.cuda is not None
                            else torch.from_numpy(val_mat))
 
     train_loss = []
@@ -112,7 +112,7 @@ def train(args, save_dir=None, logger=None):
         train_y = []
         with tqdm(train_data_loader) as progbar:
             for (x, y) in progbar:
-                if args.cuda:
+                if args.cuda is not None:
                     x = x.cuda(args.cuda)
                     y = y.cuda(args.cuda)
 
