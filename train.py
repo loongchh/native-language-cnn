@@ -50,16 +50,17 @@ def read_data(file_dir, label_file, max_length, vocab_size, logger=None, line=Tr
     return (mat, label, lang_dict)
 
 
-def train(args, logger, log_dir):
+def train(args, logger=None, save_dir=None):
     with open(join(args.feature_dir, 'dict.pkl'), 'rb') as fpkl:
         (feature_dict, feature_rev_dict) = pickle.load(fpkl)
     n_features = len(feature_dict)
 
-    logger.info("Read train dataset")
-    logger.debug("feature dir = {:s}, label file = {:s}".format(
-        args.feature_dir, args.label))
-    logger.debug("max len = {:d}, num of features = {:d}".format(
-        args.max_length, n_features))
+    if logger:
+        logger.info("Read train dataset")
+        logger.debug("feature dir = {:s}, label file = {:s}".format(
+            args.feature_dir, args.label))
+        logger.debug("max len = {:d}, num of features = {:d}".format(
+            args.max_length, n_features))
     (train_mat, train_label, lang_dict) = read_data(join(args.feature_dir, 'train'),
                                                     args.label, args.max_length,
                                                     n_features, logger)
@@ -67,23 +68,27 @@ def train(args, logger, log_dir):
     # Split into train/val set
     (train_mat, val_mat, train_label, val_label) = \
         train_test_split(train_mat, train_label, test_size=args.val_split)
-    logger.debug("created train set of size {}, val set of size {}".format(
-        train_mat.shape[0], val_mat.shape[0]))
+    if logger:
+        logger.debug("created train set of size {}, val set of size {}".format(
+            train_mat.shape[0], val_mat.shape[0]))
 
-    logger.info("Construct CNN model")
+        logger.info("Construct CNN model")
     nlcnn_model = NativeLanguageCNN(n_features, args.embed_dim, args.dropout,
                                     args.channel, len(lang_dict))
-    logger.debug("embed dim={:d}, dropout={:.2f}, channels={:d}".format(
-        args.embed_dim, args.dropout, args.channel))
+    if logger:
+        logger.debug("embed dim={:d}, dropout={:.2f}, channels={:d}".format(
+            args.embed_dim, args.dropout, args.channel))
     if args.gpu:
-        logger.info("Enable GPU computation")
+        if logger:
+            logger.info("Enable GPU computation")
         nlcnn_model.cuda()
 
-    logger.info("Create optimizer")
+    if logger:
+        logger.info("Create optimizer")
+        logger.debug("list of parameters: {}".format(list(zip(*nlcnn_model.named_parameters()))[0]))
+        logger.debug("lr={:.2e}, regularization={:.2e}".format(args.lr, args.regularization))
     optimizer = optim.Adam(nlcnn_model.parameters(), lr=args.lr,
                            weight_decay=args.regularization)
-    logger.debug("list of parameters: {}".format(list(zip(*nlcnn_model.named_parameters()))[0]))
-    logger.debug("lr={:.2e}, regularization={:.2e}".format(args.lr, args.regularization))
     criterion = nn.CrossEntropyLoss()
 
     train_mat_tensor = torch.from_numpy(train_mat)
@@ -99,8 +104,9 @@ def train(args, logger, log_dir):
     val_f1 = []
 
     for ep in range(args.num_epochs):
-        logger.info("========================================")
-        logger.info("Epoch #{:d} of {:d}".format(ep + 1, args.num_epochs))
+        if logger:
+            logger.info("========================================")
+            logger.info("Epoch #{:d} of {:d}".format(ep + 1, args.num_epochs))
 
         train_pred = []
         train_y = []
@@ -130,7 +136,8 @@ def train(args, logger, log_dir):
 
                 optimizer.step()
 
-        logger.info("Evaluating...")
+        if logger:
+            logger.info("Evaluating...")
         train_loss.append(loss.data.cpu().numpy()[0])
         train_f1.append(f1_score(train_y, train_pred, average='weighted'))
 
@@ -138,14 +145,19 @@ def train(args, logger, log_dir):
         val_score = nlcnn_model(val_mat_var)
         val_pred = np.argmax(val_score.data.cpu().numpy(), axis=1)
         val_f1.append(f1_score(val_label, val_pred, average='weighted'))
-        logger.info("Epoch #{:d}: loss = {:.3f}, train F1 = {:.2%}, val F1 = {:.2%}".format(
-            ep + 1, train_loss[-1], train_f1[-1], val_f1[-1]))
+        if logger:
+            logger.info("Epoch #{:d}: loss = {:.3f}, train F1 = {:.2%}, val F1 = {:.2%}".format(
+                ep + 1, train_loss[-1], train_f1[-1], val_f1[-1]))
 
         # Save model state
-        if (ep + 1) % args.save_every == 0 or ep == args.num_epochs - 1:
-            logger.info("Save model-state-{:04d}.pkl".format(ep + 1))
-            save_path = join(log_dir, "model-state-{:04d}.pkl".format(ep + 1))
-            torch.save(nlcnn_model.state_dict(), save_path)
+        if save_dir:
+            if (ep + 1) % args.save_every == 0 or ep == args.num_epochs - 1:
+                if logger:
+                    logger.info("Save model-state-{:04d}.pkl".format(ep + 1))
+                save_path = join(save_dir, "model-state-{:04d}.pkl".format(ep + 1))
+                torch.save(nlcnn_model.state_dict(), save_path)
+
+    return (train_loss, train_f1, val_f1)
 
 
 if __name__ == '__main__':
@@ -175,12 +187,12 @@ if __name__ == '__main__':
     parser.add_argument('--feature-dir', type=str, default='data/features/speech_transcriptions/ngrams/2',
                         help='directory containing features, including train/dev directories and \
                               pickle file of (dict, rev_dict) mapping indices to feature labels')
+    parser.add_argument('--label', type=str, default='data/labels/train/labels.train.csv',
+                        help='CSV of the train set labels')
     parser.add_argument('--log-dir', type=str, default='model',
                         help='directory in which model states are to be saved')
     parser.add_argument('--save-every', type=int, default=10,
                         help='epoch frequncy of saving model state to directory')
-    parser.add_argument('--label', type=str, default='data/labels/train/labels.train.csv',
-                        help='CSV of the train set labels')
     parser.add_argument('--gpu', action='store_true',
                         help='using GPU-enabled CUDA Variables')
     args = parser.parse_args()
