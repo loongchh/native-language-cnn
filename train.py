@@ -80,7 +80,7 @@ def train(args, logger=None, save_dir=None):
             args.embed_dim, args.dropout, args.channel))
     if args.cuda:
         if logger:
-            logger.info("Enable GPU computation")
+            logger.info("Enable CUDA Device (Id: {:d}".format(args.cuda))
         nlcnn_model.cuda(args.cuda)
 
     if logger:
