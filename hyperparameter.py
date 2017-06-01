@@ -28,14 +28,9 @@ args.save_every = 10
 args.cuda = 0
 
 
-def try_model(lr, reg, do, hyper_dir, cuda=0, global_logger=None):
-    log_dir = join(hyper_dir, "lr-{:1.1e}_reg-{:1.1e}_do-{:1.2f}".format(lr, reg, do))
-    makedirs(log_dir)
-
-    logging.basicConfig(filename=join(log_dir, strftime("%Y-%m-%d-%H%M%S") + ".log"),
-                        format='[%(asctime)s] {%(pathname)s:%(lineno)3d} %(levelname)6s - %(message)s',
-                        level=logging.DEBUG, datefmt='%H:%M:%S')
-    logger = logging.getLogger("TRAIN")
+def try_model(lr, reg, do, hyper_dir, cuda=0, logger=None):
+    save_dir = join(hyper_dir, "lr-{:1.1e}_reg-{:1.1e}_do-{:1.2f}".format(lr, reg, do))
+    makedirs(save_dir)
 
     args0 = deepcopy(args)
     args0.lr = lr
@@ -44,35 +39,38 @@ def try_model(lr, reg, do, hyper_dir, cuda=0, global_logger=None):
     args0.cuda = cuda
 
     print("Training starts at CUDA device {:d}".format(cuda))
-    (nlcnn_model, train_loss, train_f1, val_f1) = train(args, save_dir=log_dir, logger=logger)
+    (nlcnn_model, train_loss, train_f1, val_f1) = train(args, progbar=(cuda == 0))
 
-    with open(join(log_dir, "loss_f1.pkl"), 'wb') as fpkl:
+    with open(join(hyper_dir, "lr-{:1.1e}_reg-{:1.1e}_do-{:1.2f}_loss_f1.pkl".format(lr, reg, do))) as fpkl:
         pickle.dump((train_loss, train_f1, val_f1), fpkl)
 
-    if global_logger:
-        global_logger.info("lr={:1.1e}, reg={:1.1e}, do={:1.2f} ==> loss={:.3f}, train F1={:.2%}, val F1 = {:.2%}".format(
+    save_path = join(hyper_dir, "lr-{:1.1e}_reg-{:1.1e}_do-{:1.2f}_model_state.pkl".format(lr, reg, do))
+    torch.save(nlcnn_model.state_dict(), save_path)
+
+    if logger:
+        logger.info("lr={:1.1e}, reg={:1.1e}, do={:1.2f} ==> loss={:.3f}, train F1={:.2%}, val F1 = {:.2%}".format(
             lr, reg, do, train_loss[-1], train_f1[-1], val_f1[-1]))
 
 
 if __name__ == '__main__':
     timestamp = strftime("%Y-%m-%d-%H%M%S")
-    hyper_dir = "hyperparameter-" + timestamp
+    hyper_dir = join("hyperparameter", timestamp)
     makedirs(hyper_dir)
 
     logging.basicConfig(filename=join(hyper_dir, timestamp + ".log"),
                         format='[%(asctime)s] {%(pathname)s:%(lineno)3d} %(levelname)6s - %(message)s',
                         level=logging.DEBUG, datefmt='%H:%M:%S')
-    global_logger = logging.getLogger("HYPER")
+    logger = logging.getLogger("HYPER")
 
     learning_rate = [5e-5, 7e-5, 1e-4, 3e-4, 5e-4, 7e-4, 1e-3]
-    regularization = [1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3]
+    regularization = [1e-6, 5e-6]#, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3]
     dropout = [0, 0.25, 0.5, 0.75]
 
     for lr in learning_rate:
         for do in dropout:
             processes = []
             for (i, reg) in enumerate(regularization):
-                p = mp.Process(target=try_model, args=(lr, reg, do, hyper_dir, i, global_logger))
+                p = mp.Process(target=try_model, args=(lr, reg, do, hyper_dir, i, logger))
                 p.start()
                 processes.append(p)
             for p in processes:

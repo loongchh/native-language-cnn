@@ -50,7 +50,7 @@ def read_data(file_dir, label_file, max_length, vocab_size, logger=None, line=Tr
     return (mat, label, lang_dict)
 
 
-def train(args, save_dir=None, logger=None):
+def train(args, save_dir=None, logger=None, progbar=True):
     with open(join(args.feature_dir, 'dict.pkl'), 'rb') as fpkl:
         (feature_dict, feature_rev_dict) = pickle.load(fpkl)
     n_features = len(feature_dict)
@@ -110,31 +110,34 @@ def train(args, save_dir=None, logger=None):
 
         train_pred = []
         train_y = []
-        with tqdm(train_data_loader) as progbar:
-            for (x, y) in progbar:
-                if args.cuda is not None:
-                    x = x.cuda(args.cuda)
-                    y = y.cuda(args.cuda)
+        loader = tqdm(train_data_loader) if progbar else train_data_loader
 
-                x_var = Variable(x)
-                y_var = Variable(y)
+        for (x, y) in loader:
+            if args.cuda is not None:
+                x = x.cuda(args.cuda)
+                y = y.cuda(args.cuda)
 
-                nlcnn_model.train()
-                score = nlcnn_model(x_var)
-                pred = np.argmax(score.data.cpu().numpy(), axis=1)
-                train_pred += pred.tolist()
-                train_y += y.cpu().numpy().tolist()
+            x_var = Variable(x)
+            y_var = Variable(y)
 
-                loss = criterion(score, y_var)
-                optimizer.zero_grad()
-                loss.backward()
-                if args.clip_norm:  # clip by gradient norm
-                    norm = nn.utils.clip_grad_norm(nlcnn_model.parameters, args.clip_norm)
-                    progbar.set_postfix(loss=loss.data.cpu().numpy()[0], norm=norm)
-                else:
-                    progbar.set_postfix(loss=loss.data.cpu().numpy()[0])
+            nlcnn_model.train()
+            score = nlcnn_model(x_var)
+            pred = np.argmax(score.data.cpu().numpy(), axis=1)
+            train_pred += pred.tolist()
+            train_y += y.cpu().numpy().tolist()
 
-                optimizer.step()
+            loss = criterion(score, y_var)
+            optimizer.zero_grad()
+            loss.backward()
+            if args.clip_norm:  # clip by gradient norm
+                norm = nn.utils.clip_grad_norm(nlcnn_model.parameters, args.clip_norm)
+                if progbar:
+                    loader.set_postfix(loss=loss.data.cpu().numpy()[0], norm=norm)
+            else:
+                if progbar:
+                    loader.set_postfix(loss=loss.data.cpu().numpy()[0])
+
+            optimizer.step()
 
         if logger:
             logger.info("Evaluating...")
