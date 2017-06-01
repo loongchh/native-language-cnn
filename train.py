@@ -4,7 +4,7 @@ from os.path import join
 import logging
 from time import strftime
 import pickle
-from tqdm import trange
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn
@@ -97,7 +97,6 @@ def train(args, logger, log_dir):
     train_loss = []
     train_f1 = []
     val_f1 = []
-    steps_per_epoch = int(np.ceil(train_mat.shape[0] / args.batch_size))
 
     for ep in range(args.num_epochs):
         logger.info("========================================")
@@ -105,11 +104,12 @@ def train(args, logger, log_dir):
 
         train_pred = []
         train_y = []
-        with trange(steps_per_epoch) as progbar:
-            for (x, y) in train_data_loader:
+        with tqdm(train_data_loader) as progbar:
+            for (x, y) in progbar:
                 if args.gpu:
                     x = x.cuda()
                     y = y.cuda()
+
                 x_var = Variable(x)
                 y_var = Variable(y)
 
@@ -128,7 +128,6 @@ def train(args, logger, log_dir):
                 else:
                     progbar.set_postfix(loss=loss.data.cpu().numpy()[0])
 
-                progbar.update(1)
                 optimizer.step()
 
         logger.info("Evaluating...")
@@ -144,7 +143,7 @@ def train(args, logger, log_dir):
 
         # Save model state
         if (ep + 1) % args.save_every == 0 or ep == args.num_epochs - 1:
-            logger.info("Saving model-state-{:04d}.pkl...".format(ep + 1))
+            logger.info("Save model-state-{:04d}.pkl".format(ep + 1))
             save_path = join(log_dir, "model-state-{:04d}.pkl".format(ep + 1))
             torch.save(nlcnn_model.state_dict(), save_path)
 
