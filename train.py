@@ -78,10 +78,10 @@ def train(args, logger=None, save_dir=None):
     if logger:
         logger.debug("embed dim={:d}, dropout={:.2f}, channels={:d}".format(
             args.embed_dim, args.dropout, args.channel))
-    if args.gpu:
+    if args.cuda:
         if logger:
             logger.info("Enable GPU computation")
-        nlcnn_model.cuda()
+        nlcnn_model.cuda(args.cuda)
 
     if logger:
         logger.info("Create optimizer")
@@ -96,7 +96,7 @@ def train(args, logger=None, save_dir=None):
 
     train_dataset = TensorDataset(train_mat_tensor, train_label_tensor)
     train_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_mat_var = Variable(torch.from_numpy(val_mat).cuda() if args.gpu \
+    val_mat_var = Variable(torch.from_numpy(val_mat).cuda(args.cuda) if args.cuda
                            else torch.from_numpy(val_mat))
 
     train_loss = []
@@ -112,9 +112,9 @@ def train(args, logger=None, save_dir=None):
         train_y = []
         with tqdm(train_data_loader) as progbar:
             for (x, y) in progbar:
-                if args.gpu:
-                    x = x.cuda()
-                    y = y.cuda()
+                if args.cuda:
+                    x = x.cuda(args.cuda)
+                    y = y.cuda(args.cuda)
 
                 x_var = Variable(x)
                 y_var = Variable(y)
@@ -193,8 +193,8 @@ if __name__ == '__main__':
                         help='directory in which model states are to be saved')
     parser.add_argument('--save-every', type=int, default=10,
                         help='epoch frequncy of saving model state to directory')
-    parser.add_argument('--gpu', action='store_true',
-                        help='using GPU-enabled CUDA Variables')
+    parser.add_argument('--cuda', type=int, default=None,
+                        help='CUDA device to use')
     args = parser.parse_args()
 
     # Create log directory + file
