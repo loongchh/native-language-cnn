@@ -27,7 +27,7 @@ def preprocess(args):
             pickle.dump((ngram_dict, ngram_rev_dict), fpkl)
 
     if args.arpabet:
-        cmu_rev_dict = nltk.corpus.cmudict.dict()
+        cmu_dict = nltk.corpus.cmudict.dict()
         arpabet_dir = join("data/features/speech_transcriptions/arpabets/", args.data)
         arpabet_list = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B', 'CH', 'D',
                         'DH', 'EH', 'ER', 'EY', 'F', 'G', 'HH', 'IH', 'IY',
@@ -55,16 +55,12 @@ def preprocess(args):
             for line in fp:
                 if args.ngram:
                     ngram = ngrams(''.join(line.lower().split()), n=args.ngram)
-                    # for ng in ngram:
-                    #     if ng not in ngram_rev_dict:
-                    #         print(line)
-                    #         continue
                     seq = [ngram_rev_dict[ng] for ng in ngram if ng in ngram_rev_dict]
                     f_ngram.writelines(' '.join(str(i) for i in seq) + '\n')
 
                 if args.arpabet:
-                    arpabets = [cmu_rev_dict[word][0] for word in line.split()
-                                if word in cmu_rev_dict]
+                    arpabets = [cmu_dict[word][0] for word in line.split()
+                                if word in cmu_dict]
 
                     seq = [get_arpabet_idx(ab) for wd in arpabets for ab in wd]
                     f_arpabet.writelines(' '.join(str(i) for i in seq) + '\n')

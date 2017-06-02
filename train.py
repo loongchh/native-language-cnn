@@ -19,7 +19,9 @@ from sklearn.metrics import f1_score
 from model import NativeLanguageCNN
 
 
-def read_data(file_dir, label_file, max_length, vocab_size, logger=None, line=True):
+def read_data(file_dir, label_file, val_split, vocab_size, max_len, sen_len=None, logger=None):
+    """
+    """
     lang = pd.read_csv(label_file)['L1'].values.tolist()
     lang_list = sorted(list(set(lang)))
     if logger:
@@ -27,27 +29,36 @@ def read_data(file_dir, label_file, max_length, vocab_size, logger=None, line=Tr
     lang_dict = {i: l for (i, l) in enumerate(lang_list)}
     lang_rev_dict = {l: i for (i, l) in lang_dict.items()}
     label = [lang_rev_dict[la] for la in lang]
-
-    samples = []
-    label_line = []
     pad = [vocab_size]  # vocab_size indices stands for padding
 
-    for (i, fl) in enumerate(listdir(file_dir)):
-        if line:
+    file_list = sorted(listdir(file_dir))
+    (train_file, val_file, train_label, val_label) = \
+        train_test_split(file_list, label, test_size=val_split)
+
+    sample = []
+    line_label = []
+    train_mat = vocab_size * np.ones((len(train_file), max_len), dtype=np.int64)
+    for (i, fl) in enumerate(train_file):
+        if sen_len:
             lines = open(join(file_dir, fl)).readlines()
             for ln in lines:
                 tokens = ln.split()
-                samples.append(tokens[:max_length] + pad * (max_length - len(tokens)))
-            label_line += [label[i]] * len(lines)
+                sample.append(tokens[:sen_len] + pad * (sen_len - len(tokens)))
+            line_label += [label[i]] * len(lines)
         else:
             tokens = open(join(file_dir, fl)).read().split()
-            samples += tokens[:max_length] + pad * (max_length - len(tokens))
+            train_mat[i, :] = tokens[:max_len] + pad * (max_len - len(tokens))
 
-    if line:
-        label = label_line
-    mat = np.array(samples, dtype=np.int64)
+    if sen_len:
+        train_mat = np.array(sample, dtype=np.int64)
+        train_label = line_label
 
-    return (mat, label, lang_dict)
+    val_mat = vocab_size * np.ones((len(val_file), max_len), dtype=np.int64)
+    for (i, fl) in enumerate(val_file):
+        tokens = open(join(file_dir, fl)).read().split()
+        val_mat[i, :] = tokens[:max_len] + pad * (max_len - len(tokens))
+
+    return (train_mat, train_label, val_mat, val_label, lang_dict)
 
 
 def train(args, save_dir=None, logger=None, progbar=True):
@@ -60,17 +71,13 @@ def train(args, save_dir=None, logger=None, progbar=True):
         logger.debug("feature dir = {:s}, label file = {:s}".format(
             args.feature_dir, args.label))
         logger.debug("max len = {:d}, num of features = {:d}".format(
-            args.max_length, n_features))
-    (train_mat, train_label, lang_dict) = read_data(join(args.feature_dir, 'train'),
-                                                    args.label, args.max_length,
-                                                    n_features, logger)
-
-    # Split into train/val set
-    (train_mat, val_mat, train_label, val_label) = \
-        train_test_split(train_mat, train_label, test_size=args.val_split)
+            args.max_len, n_features))
+    (train_mat, train_label, val_mat, val_label, lang_dict) = \
+        read_data(join(args.feature_dir, 'train'), args.label, args.val_split,
+        n_features, args.max_len, logger=logger)
     if logger:
-        logger.debug("created train set of size {}, val set of size {}".format(
-            train_mat.shape[0], val_mat.shape[0]))
+        logger.debug("created train set of size {} x {}, val set of size {} x {}".format(
+            train_mat.shape[0], train_mat.shape[1], val_mat.shape[0], val_mat.shape[1]))
 
         logger.info("Construct CNN model")
     nlcnn_model = NativeLanguageCNN(n_features, args.embed_dim, args.dropout,
@@ -80,7 +87,7 @@ def train(args, save_dir=None, logger=None, progbar=True):
             args.embed_dim, args.dropout, args.channel))
     if args.cuda is not None:
         if logger:
-            logger.info("Enable CUDA Device ID {:d}".format(args.cuda))
+            logger.info("Enable CUDA Device (ID #{:d})".format(args.cuda))
         nlcnn_model.cuda(args.cuda)
 
     if logger:
@@ -111,6 +118,8 @@ def train(args, save_dir=None, logger=None, progbar=True):
         train_pred = []
         train_y = []
         loader = tqdm(train_data_loader) if progbar else train_data_loader
+
+
 
         for (x, y) in loader:
             if args.cuda is not None:
@@ -152,13 +161,16 @@ def train(args, save_dir=None, logger=None, progbar=True):
             logger.info("Epoch #{:d}: loss = {:.3f}, train F1 = {:.2%}, val F1 = {:.2%}".format(
                 ep + 1, train_loss[-1], train_f1[-1], val_f1[-1]))
 
-        # Save model state
-        if save_dir:
+        if save_dir:  # save model state
             if (ep + 1) % args.save_every == 0 or ep == args.num_epochs - 1:
                 if logger:
                     logger.info("Save model-state-{:04d}.pkl".format(ep + 1))
                 save_path = join(save_dir, "model-state-{:04d}.pkl".format(ep + 1))
                 torch.save(nlcnn_model.state_dict(), save_path)
+
+    if save_dir:  # save loss/f1 histroy
+        save_path = join(save_dir, "model-loss-f1.pkl")
+        pickle.dump((train_loss, train_f1, val_f1), open(save_path, 'wb'))
 
     return (nlcnn_model, train_loss, train_f1, val_f1)
 
@@ -181,7 +193,7 @@ if __name__ == '__main__':
                         help='size of mini-batch')
     parser.add_argument('--val-split', type=float, default=0.0909,
                         help='fraction of train set to use as val set')
-    parser.add_argument('--max-length', type=int, default=200,
+    parser.add_argument('--max-len', type=int, default=600,
                         help='maximum feature length for each document')
     parser.add_argument('--embed-dim', type=int, default=500,
                         help='dimension of the feature embeddings')
@@ -196,7 +208,7 @@ if __name__ == '__main__':
                         help='directory in which model states are to be saved')
     parser.add_argument('--save-every', type=int, default=10,
                         help='epoch frequncy of saving model state to directory')
-    parser.add_argument('--cuda', type=int, default=None,
+    parser.add_argument('--cuda', type=int, default=0,
                         help='CUDA device to use')
     args = parser.parse_args()
 
