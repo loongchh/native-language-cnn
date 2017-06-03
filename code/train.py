@@ -208,7 +208,7 @@ if __name__ == '__main__':
                         help='directory in which model states are to be saved')
     parser.add_argument('--save-every', type=int, default=10,
                         help='epoch frequncy of saving model state to directory')
-    parser.add_argument('--cuda', type=int, default=0,
+    parser.add_argument('--cuda', type=int,
                         help='CUDA device to use')
     args = parser.parse_args()
 
