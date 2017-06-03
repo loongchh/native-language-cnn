@@ -10,8 +10,86 @@ from tqdm import tqdm
 import pickle
 import string
 import re
+import pandas as pd
+import numpy as np
 
 from collections import Counter
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
+
+def get_arpabet_list():
+    arpabet_list = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'B', 'CH', 'D',
+                    'DH', 'EH', 'ER', 'EY', 'F', 'G', 'HH', 'IH', 'IY',
+                    'JH', 'K', 'L', 'M', 'N', 'NG', 'OW', 'OY', 'P', 'R',
+                    'S', 'SH', 'T', 'TH', 'UH', 'UW', 'V', 'W', 'Y', 'Z', 'ZH',
+                    '<SEMICOLON>', '<COMMA>', '<PERIOD>', '<BAR>', '<UNKNOWN>', '<SEP>']
+    arpabet_dict = {i: a for (i, a) in enumerate(arpabet_list)}
+    arpabet_rev_dict = {a: i for (i, a) in arpabet_dict.items()}
+    
+    return arpabet_list, arpabet_dict, arpabet_rev_dict
+
+def split_data(data, lang_dict):
+    X, y = data
+    
+    X_train_list = []
+    y_train_list = []
+    X_val_list = []
+    y_val_list = []
+    
+    for k in lang_dict:
+        inds = (y==k)
+        X_temp = X[inds]
+        y_temp = y[inds]
+        X_train_temp, X_val_temp, y_train_temp, y_val_temp = \
+            train_test_split(X_temp, y_temp, test_size=0.1)
+        X_train_list.append(X_train_temp)
+        y_train_list.append(y_train_temp)
+        X_val_list.append(X_val_temp)
+        y_val_list.append(y_val_temp)
+    
+    X_train = shuffle(np.vstack(X_train_list), random_state=1)
+    y_train = shuffle(np.hstack(y_train_list), random_state=1)
+    X_val = shuffle(np.vstack(X_val_list), random_state=1)
+    y_val = shuffle(np.hstack(y_val_list), random_state=1)
+        
+    return X_train, y_train, X_val, y_val
+
+def load_data(data, label_file='data/labels/train/labels.train.csv', line=False, max_length=100):
+    translation_ids_dir = join("data/features/speech_transcriptions/new_arpabets/translations_ids", data)
+    arpabet_list, arpabet_dict, arpabet_rev_dict = get_arpabet_list()
+    
+    lang = pd.read_csv(label_file)['L1'].values.tolist()
+    lang_list = sorted(list(set(lang)))
+    print("list of L1: {}".format(lang_list))
+    lang_dict = {i: l for (i, l) in enumerate(lang_list)}
+    lang_rev_dict = {l: i for (i, l) in lang_dict.items()}
+    label = [lang_rev_dict[la] for la in lang]
+    
+    samples = []
+    label_line = []
+    pad = [len(arpabet_list)]  # vocab_size indices stands for padding
+    
+    for (i, fl) in enumerate(sorted(listdir(translation_ids_dir))):
+        if line:
+            lines = open(join(translation_ids_dir, fl)).readlines()
+            for ln in lines:
+                tokens = ln.split()
+                samples.append(tokens[:max_length] + pad * (max_length - len(tokens)))
+            label_line += [label[i]] * len(lines)
+        else:
+            tokens = []
+            lines = open(join(translation_ids_dir, fl)).readlines()
+            for ln in lines:
+                tokens += ln.split() + [arpabet_rev_dict['<SEP>']]
+            tokens = tokens[:-1]
+            samples.append(tokens[:max_length] + pad * (max_length - len(tokens)))
+        
+    if line:
+        label = label_line
+    label = np.array(label, dtype=np.int32)
+    mat = np.array(samples, dtype=np.int64)
+
+    return (mat, label, lang_dict, lang_rev_dict)
 
 def add_to_words_to_list(data, vocab, punctuations):
     '''
