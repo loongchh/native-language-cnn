@@ -116,9 +116,6 @@ def train(args, save_dir=None, logger=None, progbar=True):
         train_pred = []
         train_y = []
         loader = tqdm(train_data_loader) if progbar else train_data_loader
-
-
-
         for (x, y) in loader:
             if args.cuda is not None:
                 x = x.cuda(args.cuda)
