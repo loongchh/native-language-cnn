@@ -151,8 +151,12 @@ def train(args, save_dir=None, logger=None, progbar=True):
     train_label_tensor = torch.LongTensor(train_label)
     train_dataset = TensorDataset(train_mat_tensor, train_label_tensor)
     train_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_mat_var = Variable(torch.from_numpy(val_mat).cuda(args.cuda) if args.cuda is not None
-                           else torch.from_numpy(val_mat))  # val set variable
+
+    # Create val data loader
+    val_mat_tensor = torch.from_numpy(val_mat)
+    val_label_tensor = torch.LongTensor(val_label)
+    val_dataset = TensorDataset(val_mat_tensor, val_label_tensor)
+    val_data_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
     # Record loss/F1 at end of each epoch
     train_loss = []
@@ -166,27 +170,25 @@ def train(args, save_dir=None, logger=None, progbar=True):
 
         train_pred = []  # record predictions for all batches
         train_y = []  # record ground truth labels for all batches
-
         loader = tqdm(train_data_loader) if progbar else train_data_loader
+
         for (x, y) in loader:
             if args.cuda is not None:  # GPU
                 x = x.cuda(args.cuda)
                 y = y.cuda(args.cuda)
 
-            x_var = Variable(x)
-            y_var = Variable(y)
-
             nlcnn_model.train()  # set model to train mode (influences behavior of dropout functions)
-            score = nlcnn_model(x_var)
+            score = nlcnn_model(Variable(x))
             pred = np.argmax(score.data.cpu().numpy(), axis=1)
             train_pred += pred.tolist()  # append all predictions from batch
             train_y += y.cpu().numpy().tolist()  # append all ground truth label from batch
 
-            loss = criterion(score, y_var)  # cross-entropy loss
+            loss = criterion(score, Variable(y))  # cross-entropy loss
             optimizer.zero_grad()  # set Variables' gradient to zero
             loss.backward()  # backward pass calculates gradients
+
             if args.clip_norm:  # clip by gradient norm
-                norm = nn.utils.clip_grad_norm(nlcnn_model.parameters, args.clip_norm)
+                norm = nn.utils.clip_grad_norm(nlcnn_model.parameters(), args.clip_norm)
                 if progbar:
                     loader.set_postfix(loss=loss.data.cpu().numpy()[0], norm=norm)
             else:
@@ -201,13 +203,27 @@ def train(args, save_dir=None, logger=None, progbar=True):
         train_loss.append(loss.data.cpu().numpy()[0])
         train_f1.append(f1_score(train_y, train_pred, average='weighted'))
 
-        nlcnn_model.eval()  # model eval mode: no dropout
-        val_score = nlcnn_model(val_mat_var)
-        val_pred = np.argmax(val_score.data.cpu().numpy(), axis=1)
-        val_f1.append(f1_score(val_label, val_pred, average='weighted'))
+        val_pred = []
+        val_y = []
+        for (x, y) in val_data_loader:
+            if args.cuda is not None:  # GPU
+                x = x.cuda(args.cuda)
+                y = y.cuda(args.cuda)
+
+            nlcnn_model.eval()  # model eval mode: no dropout
+            score = nlcnn_model(Variable(x))
+            pred = np.argmax(score.data.cpu().numpy(), axis=1)
+            val_pred += pred.tolist()  # append all predictions from batch
+            val_y += y.cpu().numpy().tolist()  # append all ground truth label from batch
+
+        val_f1.append(f1_score(val_y, val_pred, average='weighted'))
         if logger:
-            logger.info("Epoch #{:d}: loss = {:.3f}, train F1 = {:.2%}, val F1 = {:.2%}".format(
-                ep + 1, train_loss[-1], train_f1[-1], val_f1[-1]))
+            if args.clip_norm:
+                logger.info("Epoch #{:d}: loss = {:.3f}, train F1 = {:.2%}, val F1 = {:.2%}, norm = {:.2f}".format(
+                    ep + 1, train_loss[-1], train_f1[-1], val_f1[-1], norm))
+            else:
+                logger.info("Epoch #{:d}: loss = {:.3f}, train F1 = {:.2%}, val F1 = {:.2%}".format(
+                    ep + 1, train_loss[-1], train_f1[-1], val_f1[-1]))
 
         if save_dir:  # save model state
             # Save at end of training or by frequency args.save_every
