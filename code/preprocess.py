@@ -17,14 +17,13 @@ def strip_arpabet(arpabet):
 
 
 def preprocess(args):
-    transcript_dir = join("data/speech_transcriptions", args.data,
-                                  "tokenized")
+    transcript_dir = join("data/speech_transcriptions", args.data, "tokenized")
     file_list = listdir(transcript_dir)
 
     if args.ngram:
         ngram_dir = join("data/features/speech_transcriptions/ngrams",
                          str(args.ngram), args.data)
-        ngram_list = product(ascii_lowercase + digits, repeat=args.ngram)
+        ngram_list = product(ascii_lowercase, repeat=args.ngram)
         ngram_dict = {i: ng for (i, ng) in enumerate(ngram_list)}
         ngram_rev_dict = {ng: i for (i, ng) in ngram_dict.items()}
         pickle_path = join("data/features/speech_transcriptions/ngrams",
@@ -57,7 +56,12 @@ def preprocess(args):
 
             for line in fp:
                 if args.ngram:
-                    ngram = ngrams(''.join(line.lower().split()), n=args.ngram)
+                    if args.word_bound:
+                        ngram = [ng for word in line.lower().split() \
+                                 for ng in ngrams(word, n=args.ngram)]
+                    else:
+                        ngram = ngrams(''.join(line.lower().split()), n=args.ngram)
+
                     seq = [ngram_rev_dict[ng] for ng in ngram if ng in ngram_rev_dict]
                     f_ngram.writelines(' '.join(str(i) for i in seq) + '\n')
 
@@ -79,6 +83,8 @@ if __name__ == '__main__':
     parser.add_argument('--data', type=str, default='train',
                         help='dataset division that is to be processed')
     parser.add_argument('--ngram', type=int, default=None,
+                        help='generate n-gram features')
+    parser.add_argument('--word-bound', action='store_true',
                         help='generate n-gram features')
     parser.add_argument('--arpabet', type=int, default=None,
                         help='generate arpabet phoneme features')
