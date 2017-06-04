@@ -233,9 +233,8 @@ def train(args, save_dir=None, logger=None, progbar=True):
                 save_path = join(save_dir, "model-state-{:04d}.pkl".format(ep + 1))
                 torch.save(nlcnn_model.state_dict(), save_path)
 
-    if save_dir:  # save loss/f1 history for all epochs
-        save_path = join(save_dir, "model-loss-f1.pkl")
-        pickle.dump((train_loss, train_f1, val_f1), open(save_path, 'wb'))
+            save_path = join(save_dir, "model-loss-f1.pkl")
+            pickle.dump((train_loss, train_f1, val_f1), open(save_path, 'wb'))
 
     return (nlcnn_model, train_loss, train_f1, val_f1)
 
@@ -254,7 +253,7 @@ if __name__ == '__main__':
                         help='clip by total norm')
     parser.add_argument('--dropout', type=float, default=0.25,
                         help='dropout strength')
-    parser.add_argument('--num-epochs', type=int, default=100,
+    parser.add_argument('--num-epochs', type=int, default=50,
                         help='number of training epochs')
     parser.add_argument('--batch-size', type=int, default=25,
                         help='size of mini-batch')
@@ -285,7 +284,7 @@ if __name__ == '__main__':
     makedirs(log_dir)
 
     # Setup logger
-    logging.basicConfig(filename=join(log_dir, timestamp + ".log"),
+    logging.basicConfig(filename=join(args.log_dir, timestamp + ".log"),
                         format='[%(asctime)s] {%(pathname)s:%(lineno)3d} %(levelname)6s - %(message)s',
                         level=logging.DEBUG, datefmt='%H:%M:%S')
     console = logging.StreamHandler()

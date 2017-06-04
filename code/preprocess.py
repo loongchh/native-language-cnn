@@ -33,7 +33,7 @@ def preprocess(args):
                          str(args.ngram), args.data)
 
         # list of ngram tuples (like ('a', 'b'))
-        ngram_list = product(ascii_lowercase, repeat=args.ngram)
+        ngram_list = product(ascii_lowercase + punctuation + ' ', repeat=args.ngram)
         ngram_dict = {i: ng for (i, ng) in enumerate(ngram_list)}  # mapping index to ngrams
         ngram_rev_dict = {ng: i for (i, ng) in ngram_dict.items()}  # mapping ngrams to index
         pickle_path = join("data/features/speech_transcriptions/ngrams",
@@ -73,7 +73,7 @@ def preprocess(args):
                         ngram = [ng for word in line.lower().split() \
                                  for ng in ngrams(word, n=args.ngram)]
                     else:  # include n-grams like 'ow' in "hello world"
-                        ngram = ngrams(''.join(line.lower().split()), n=args.ngram)
+                        ngram = ngrams(line.lower(), n=args.ngram)
 
                     # Write indices of n-grams to file
                     seq = [ngram_rev_dict[ng] for ng in ngram if ng in ngram_rev_dict]
