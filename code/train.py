@@ -141,9 +141,9 @@ def train(args, save_dir=None, logger=None, progbar=True):
     if logger:
         logger.info("Create optimizer")
         logger.debug("list of parameters: {}".format(list(zip(*nlcnn_model.named_parameters()))[0]))
-        logger.debug("lr={:.2e}, regularization={:.2e}".format(args.lr, args.regularization))
+        logger.debug("lr={:.2e}, reg={:.2e}".format(args.lr, args.reg))
     optimizer = optim.Adam(nlcnn_model.parameters(), lr=args.lr,
-                           weight_decay=args.regularization)  # Adam optimizer
+                           weight_decay=args.reg)  # Adam optimizer
     criterion = nn.CrossEntropyLoss()  # cross-entropy loss function
 
     # Create train data loader
@@ -247,7 +247,7 @@ if __name__ == '__main__':
                         help='learning rate')
     parser.add_argument('--seed', type=int, default=224,
                         help='seed for random initialization')
-    parser.add_argument('--regularization', type=float, default=0,
+    parser.add_argument('--reg', type=float, default=0,
                         help='regularization coefficient')
     parser.add_argument('--clip-norm', type=float, default=None,
                         help='clip by total norm')
@@ -293,6 +293,7 @@ if __name__ == '__main__':
     console.setFormatter(formatter)
     logging.getLogger('').addHandler(console)
     logger = logging.getLogger("TRAIN")
+    logger.info("Timestamp: {}".format(timestamp))
 
     # Set random seed
     if args.seed:
