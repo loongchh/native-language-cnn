@@ -45,14 +45,20 @@ def read_data(file_dir, label_file, val_split, vocab_size, max_len, sen_len=None
         val_label: (list) labels of each validation samples
         lang_dict: (dict) dictionary mapping indices to the L1 language
     """
-    lang = pd.read_csv(label_file)['L1'].values.tolist()
-    lang_list = sorted(list(set(lang)))  # sorted list of L1
+    df_label = pd.read_csv(label_file)
+    # sorted list of L1
+    lang = df_label['L1'].values.tolist()
+    lang_list = sorted(list(set(lang)))
     if logger:
         logger.debug("list of L1: {}".format(lang_list))
     lang_dict = {i: l for (i, l) in enumerate(lang_list)}   # index to L1
     lang_rev_dict = {l: i for (i, l) in lang_dict.items()}  # L1 to index
     label = [lang_rev_dict[la] for la in lang]
     pad = [vocab_size]  # vocab_size indices stands for padding
+
+    # Construct file list from label file ID
+    file_id = df_label['test_taker_id'].tolist()
+    file_list = np.array(["{:05d}.txt".format(i) for i in file_id])
 
     # Split file list to train/dev by val_split
     file_list = sorted(listdir(file_dir))
