@@ -122,7 +122,7 @@ def train(args, save_dir=None, logger=None, progbar=True):
     # Read data from directory and split to train/val set
     (train_mat, train_label, val_mat, val_label, lang_dict) = \
         read_data(join(args.feature_dir, 'train'), args.label, args.val_split,
-        n_features, args.max_len, logger=logger)
+                  n_features, args.max_len, logger=logger)
 
     if logger:
         logger.debug("created train set of size {} x {}, val set of size {} x {}".format(
@@ -247,7 +247,7 @@ if __name__ == '__main__':
                         help='learning rate')
     parser.add_argument('--seed', type=int, default=224,
                         help='seed for random initialization')
-    parser.add_argument('--reg', type=float, default=0,
+    parser.add_argument('--reg', type=float, default=5e-4,
                         help='regularization coefficient')
     parser.add_argument('--clip-norm', type=float, default=None,
                         help='clip by total norm')
