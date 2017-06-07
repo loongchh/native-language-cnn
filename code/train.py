@@ -16,7 +16,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 
-from model import NativeLanguageCNN
+# from model import NativeLanguageCNN
 
 
 def read_data(file_dir, label_file, val_split, vocab_size, max_len, sen_len=None, logger=None):
@@ -60,10 +60,14 @@ def read_data(file_dir, label_file, val_split, vocab_size, max_len, sen_len=None
     file_id = df_label['test_taker_id'].tolist()
     file_list = np.array(["{:05d}.txt".format(i) for i in file_id])
 
-    # Split file list to train/dev by val_split
-    file_list = sorted(listdir(file_dir))
-    (train_file, val_file, train_label, val_label) = \
-        train_test_split(file_list, label, test_size=val_split)
+    if val_split == 0:
+        train_file = file_list
+        train_label = label
+    else:
+        # Split file list to train/dev by val_split
+        file_list = sorted(listdir(file_dir))
+        (train_file, val_file, train_label, val_label) = \
+            train_test_split(file_list, label, test_size=val_split)
 
     sample = []
     line_label = []
@@ -84,6 +88,9 @@ def read_data(file_dir, label_file, val_split, vocab_size, max_len, sen_len=None
     if sen_len:
         train_mat = np.array(sample, dtype=np.int64)
         train_label = line_label
+
+    if val_split == 0:
+        return (train_mat, train_label, lang_dict)
 
     val_mat = vocab_size * np.ones((len(val_file), max_len), dtype=np.int64)
     for (i, fl) in enumerate(val_file):
