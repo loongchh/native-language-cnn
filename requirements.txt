@@ -16,3 +16,8 @@ tk=8.5.18=0
 wheel=0.29.0=py34_0
 xz=5.2.2=1
 zlib=1.2.8=3
+pytorch=0.1.12=py34_0
+nltk=3.2.2=py34_0
+pandas=0.19.2=py34_0
+matplotlib=2.0.0=np111py36_0
+scikit-learn=0.18.1=np111py36_1
