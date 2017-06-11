@@ -21,13 +21,16 @@ class NativeLanguageCNN(nn.Module):
         self.linear = nn.Linear(out_channel * 4, n_language)
 
     def forward(self, x):
+        # Character bigram embedding layer
         embedding = self.dropout(self.embed(x)).unsqueeze(1)
 
+        # Convolutional layers
         h2 = F.relu(self.cnn2(embedding)).max(dim=2)[0].squeeze(-1)
         h3 = F.relu(self.cnn3(embedding)).max(dim=2)[0].squeeze(-1)
         h4 = F.relu(self.cnn4(embedding)).max(dim=2)[0].squeeze(-1)
         h5 = F.relu(self.cnn5(embedding)).max(dim=2)[0].squeeze(-1)
-
         h_cnn = torch.cat((h2, h3, h4, h5), dim=1).squeeze(-1)
-        out = self.linear(h_cnn)
+
+        # Fully-connected layer
+        out = self.linear(h_cnn)  # softmax not applied here
         return out
