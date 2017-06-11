@@ -28,7 +28,7 @@ To do so with GPU support,
 python code/train.py --cuda 0
 ```
 
-see [train.py](code/LICENSE) help for more information.
+see [train.py](code/train.py) help for more information.
 
 ## Testing
 
