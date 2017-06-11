@@ -4,8 +4,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-import numpy as np
-
 
 class NativeLanguageCNN(nn.Module):
     def __init__(self, vocab_size, embed_dim, dropout, out_channel, n_language):
