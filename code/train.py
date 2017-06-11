@@ -16,7 +16,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 
-# from model import NativeLanguageCNN
+from model import NativeLanguageCNN
 
 
 def read_data(file_dir, label_file, val_split, vocab_size, max_len, sen_len=None, logger=None):
