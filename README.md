@@ -28,15 +28,15 @@ To do so with GPU support,
 python code/train.py --cuda 0
 ```
 
-see `train.py` help for more information.
+see [train.py](code/LICENSE) help for more information.
 
 ## Testing
 
-Refer to `Evaluate.ipynb` notebook for information on model evaluation.
+Refer to the [Evaluate.ipynb](Evaluate.ipynb) notebook for information on model evaluation.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
