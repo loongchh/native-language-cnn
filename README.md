@@ -34,10 +34,12 @@ see [train.py](code/train.py) help for more information.
 
 Refer to the [Evaluate.ipynb](Evaluate.ipynb) notebook for information on model evaluation.
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
-
 ## Acknowledgments
 
 This work is derived from data provided by the Educational Testing Services, copyright 2017 ETS (www.ets.org). The opinions set forth in this work are those of the authors and not ETS.
+
+## License
+
+To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.
+
+You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>
